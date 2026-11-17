@@ -10,20 +10,24 @@ import tempfile
 from pathlib import Path
 
 from .core import compare, duplicate_groups, load_snapshot, scan
+from .report import render_report
 
 
-def _write_json(path: Path, data: dict) -> None:
+def _write_text(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     # A partially written snapshot must never replace a good one.
     fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as target:
-            json.dump(data, target, ensure_ascii=False, indent=2)
-            target.write("\n")
+            target.write(content)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def _write_json(path: Path, data: dict) -> None:
+    _write_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -37,6 +41,11 @@ def _parser() -> argparse.ArgumentParser:
     dupes.add_argument("folder", type=Path)
     dupes.add_argument("--exclude", action="append", default=[], metavar="GLOB")
     dupes.add_argument("--json", type=Path, metavar="FILE", help="write full machine-readable result")
+    report = commands.add_parser("report", help="create a self-contained HTML inventory")
+    report.add_argument("folder", type=Path)
+    report.add_argument("output", type=Path)
+    report.add_argument("--exclude", action="append", default=[], metavar="GLOB")
+    report.add_argument("--label", help="display name for the scanned folder")
     diff = commands.add_parser("diff", help="compare two hashed snapshots")
     diff.add_argument("before", type=Path)
     diff.add_argument("after", type=Path)
@@ -61,14 +70,22 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Warning: {len(result['errors'])} files could not be scanned", file=sys.stderr)
                 return 2
             return 0
-        if args.command == "dupes":
+        if args.command in {"dupes", "report"}:
             excluded = list(args.exclude)
-            if args.json:
+            report_output = args.output if args.command == "report" else args.json
+            if report_output:
                 root = args.folder.expanduser().resolve(strict=True)
-                output = args.json.expanduser().resolve()
+                output = report_output.expanduser().resolve()
                 if output.is_relative_to(root):
                     excluded.append(output.relative_to(root).as_posix())
             result = duplicate_groups(args.folder, exclude=excluded)
+            if args.command == "report":
+                _write_text(args.output, render_report(result, label=args.label))
+                print(f"Saved HTML report to {args.output}")
+                if result["errors"]:
+                    print(f"Warning: {len(result['errors'])} files could not be scanned", file=sys.stderr)
+                    return 2
+                return 0
             if args.json:
                 _write_json(args.json, result)
             for group in result["groups"]:

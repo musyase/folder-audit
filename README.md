@@ -2,6 +2,8 @@
 
 A small, offline tool for answering two practical questions: **which files are identical?** and **what changed in this folder?** It reads files but never deletes or moves them. Useful for export folders, backups, course materials, and project artifacts.
 
+**Try the interactive report:** [open a synthetic example](https://musyase.github.io/folder-audit/demo.html). It uses invented file names and contents; the report itself works offline.
+
 **Why this project exists:** comparing file names or sizes alone misses modified files and produces false duplicate matches. `folder-audit` uses SHA-256 for content comparison. Duplicate scanning hashes only files with matching sizes, so unique-size files are skipped.
 
 ## Install
@@ -42,6 +44,16 @@ folder-audit diff before.json after.json --json changes.json
 ```
 
 The diff lists added, removed, and content-changed paths. Changes to timestamps alone do not count as changed. Snapshot JSON includes the scan time, original root, relative paths, file sizes, nanosecond modification times, SHA-256 hashes, skipped symlinks, and read errors.
+
+## Open an HTML report
+
+```bash
+folder-audit report ./exports report.html --exclude '.git'
+```
+
+Open `report.html` in a browser to search all files, inspect duplicate groups, and see which top-level folders take the most space. The report is one HTML file with no external scripts, fonts, or requests. It contains file names and sizes, so keep reports of private folders private. Use `--label "My exports"` to replace the displayed absolute folder path.
+
+The example page in `docs/demo.html` is generated from synthetic files with `python scripts/build_demo.py`.
 
 ## Behavior and limits
 

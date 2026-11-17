@@ -6,6 +6,7 @@ import pytest
 
 from folder_audit.cli import main
 from folder_audit.core import compare, duplicate_groups, load_snapshot, scan
+from folder_audit.report import render_report
 
 
 def test_duplicate_detection_checks_content_not_just_size(tmp_path: Path):
@@ -80,3 +81,33 @@ def test_rejects_invalid_and_duplicate_snapshot_entries(tmp_path: Path):
 
     with pytest.raises(ValueError, match="repeated path"):
         load_snapshot(output)
+
+
+def test_report_command_is_self_contained_and_excludes_its_output(tmp_path: Path):
+    (tmp_path / "a.txt").write_bytes(b"same")
+    (tmp_path / "b.txt").write_bytes(b"same")
+    output = tmp_path / "report.html"
+
+    assert main(["report", str(tmp_path), str(output), "--label", "Example folder"]) == 0
+    assert main(["report", str(tmp_path), str(output), "--label", "Example folder"]) == 0
+    html = output.read_text(encoding="utf-8")
+    assert "Example folder" in html
+    assert str(tmp_path) not in html
+    assert 'id="file-search"' in html
+    assert "2 copies" in html
+    assert 'data-path="report.html"' not in html
+
+
+def test_report_escapes_untrusted_file_names_and_labels():
+    result = {
+        "root": "secret-root", "created_at": "2026-11-18T00:00:00+00:00",
+        "files": [{"path": '<script>alert("x")</script>.txt', "size": 4}],
+        "groups": [], "reclaimable_bytes": 0, "errors": [], "skipped_symlinks": [],
+    }
+
+    html = render_report(result, label="<unsafe>")
+
+    assert "secret-root" not in html
+    assert "&lt;unsafe&gt;" in html
+    assert '&lt;script&gt;alert(&quot;' in html
+    assert '<script>alert("x")</script>' not in html
