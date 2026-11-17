@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "folder-audit"
+version = "0.1.0"
+description = "Local file snapshots, duplicate detection, and content-aware diffs"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "musyase"}]
+
+[project.scripts]
+folder-audit = "folder_audit.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
