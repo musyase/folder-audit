@@ -100,10 +100,13 @@ def main(argv: list[str] | None = None) -> int:
         result = compare(load_snapshot(args.before), load_snapshot(args.after))
         if args.json:
             _write_json(args.json, result)
-        for kind in ("added", "removed", "changed"):
+        for kind in ("added", "removed", "moved", "changed"):
             print(f"{kind}: {len(result[kind])}")
-            for path in result[kind]:
-                print(f"  {path}")
+            for item in result[kind]:
+                if kind == "moved":
+                    print(f"  {item['from']} -> {item['to']}")
+                else:
+                    print(f"  {item}")
         return 0
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"folder-audit: {exc}", file=sys.stderr)

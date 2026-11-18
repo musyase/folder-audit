@@ -148,9 +148,26 @@ def compare(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     old_files = {item["path"]: item for item in before["files"]}
     new_files = {item["path"]: item for item in after["files"]}
     old_paths, new_paths = set(old_files), set(new_files)
+    added = new_paths - old_paths
+    removed = old_paths - new_paths
+    old_by_hash: dict[str, list[str]] = defaultdict(list)
+    new_by_hash: dict[str, list[str]] = defaultdict(list)
+    for path in old_paths:
+        old_by_hash[old_files[path]["sha256"]].append(path)
+    for path in new_paths:
+        new_by_hash[new_files[path]["sha256"]].append(path)
+    moved = []
+    for digest in old_by_hash.keys() & new_by_hash.keys():
+        old_matches, new_matches = old_by_hash[digest], new_by_hash[digest]
+        if len(old_matches) == len(new_matches) == 1 and old_matches[0] in removed and new_matches[0] in added:
+            source, destination = old_matches[0], new_matches[0]
+            moved.append({"from": source, "to": destination})
+            removed.remove(source)
+            added.remove(destination)
     return {
-        "added": sorted(new_paths - old_paths),
-        "removed": sorted(old_paths - new_paths),
+        "added": sorted(added),
+        "removed": sorted(removed),
+        "moved": sorted(moved, key=lambda item: (item["from"], item["to"])),
         "changed": sorted(path for path in old_paths & new_paths
                           if old_files[path]["sha256"] != new_files[path]["sha256"]),
     }

@@ -43,7 +43,7 @@ folder-audit snapshot ./exports after.json
 folder-audit diff before.json after.json --json changes.json
 ```
 
-The diff lists added, removed, and content-changed paths. Changes to timestamps alone do not count as changed. Snapshot JSON includes the scan time, original root, relative paths, file sizes, nanosecond modification times, SHA-256 hashes, skipped symlinks, and read errors.
+The diff lists added, removed, moved, and content-changed paths. A move is reported when one removed path and one added path share a unique content hash. If several paths share that hash, the tool leaves them as added and removed rather than guessing which file moved. Changes to timestamps alone do not count as changed. Snapshot JSON includes the scan time, original root, relative paths, file sizes, nanosecond modification times, SHA-256 hashes, skipped symlinks, and read errors.
 
 ## Open an HTML report
 

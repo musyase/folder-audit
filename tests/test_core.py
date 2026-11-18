@@ -32,7 +32,22 @@ def test_snapshot_diff_uses_hash_when_mtime_is_unchanged(tmp_path: Path):
 
     after = scan(tmp_path)
 
-    assert compare(before, after) == {"added": ["new.txt"], "removed": [], "changed": ["file.txt"]}
+    assert compare(before, after) == {"added": ["new.txt"], "removed": [], "moved": [], "changed": ["file.txt"]}
+
+
+def test_snapshot_diff_reports_only_unambiguous_moves(tmp_path: Path):
+    (tmp_path / "a.txt").write_text("unique", encoding="utf-8")
+    (tmp_path / "copy-1.txt").write_text("same", encoding="utf-8")
+    (tmp_path / "copy-2.txt").write_text("same", encoding="utf-8")
+    before = scan(tmp_path)
+    (tmp_path / "a.txt").rename(tmp_path / "renamed.txt")
+    (tmp_path / "copy-1.txt").rename(tmp_path / "copy-3.txt")
+    after = scan(tmp_path)
+
+    result = compare(before, after)
+    assert result["moved"] == [{"from": "a.txt", "to": "renamed.txt"}]
+    assert result["added"] == ["copy-3.txt"]
+    assert result["removed"] == ["copy-1.txt"]
 
 
 def test_exclusions_and_symlinks_are_respected(tmp_path: Path):
